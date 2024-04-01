@@ -16,7 +16,7 @@ import gleam/string
 
 
 /// SemVer represents all the constituent parts of a Semantic Versioning
-/// (or SemVer) 2.0.0 definition as described at: https://semver.org
+/// (or SemVer) 2.0.0 definition as described on [semver.org](https://semver.org).
 pub type SemVer {
     SemVer(
         major: Int,
@@ -31,7 +31,7 @@ pub const empty_semver = SemVer(0, 0, 0, "", "")
 
 /// Parses the given string into a `SemVer`.
 ///
-/// Parsing rules are EXACTLY based on the rules defined at: https://semver.org
+/// Parsing rules are EXACTLY based on the rules defined on [semver.org](https://semver.org).
 /// If you would prefer some leniency when parsing, see `parse_loosely()`.
 ///
 /// See `SemVerParseError` for possible error variants returned by `parse()`.
@@ -39,12 +39,13 @@ pub const empty_semver = SemVer(0, 0, 0, "", "")
 /// ## Examples
 ///
 /// ```gleam
-/// parse("1.2.3")
-/// // -> Ok(SemVer(major: 4, minor; 5, patch: 6, pre: "", build: ""))
+/// parse("1.2.3-rc0+20240505")
+/// // -> Ok(SemVer(major: 1, minor; 2, patch: 3, pre: "rc0", build: "20240505"))
 /// ```
 ///
+/// Both the Pre-release ("-rc0") and Build ("+20240505") parts are optional:
+///
 /// ```gleam
-/// // Both Pre-release ("-rc0") and Build ("+20240505") parts are optional:
 /// parse("4.5.6-rc0")
 /// // -> Ok(SemVer(major: 4, minor; 5, patch: 6, pre: "rc0", build: ""))
 ///
@@ -54,7 +55,8 @@ pub const empty_semver = SemVer(0, 0, 0, "", "")
 /// parse("4.5.6-rc0+20240505")
 /// // -> Ok(SemVer(major: 4, minor; 5, patch: 6, pre: "rc0", build: "20240505"))
 ///
-/// // WARN: the Pre-release should always come *before* the Build, otherwise:
+/// // NOTE: the Pre-release should always come *before* the Build,
+/// // otherwise, it will get included as part of the Build:
 /// parse("6.7.8+20240505-rc0")
 /// // -> Ok(SemVer(major: 4, minor; 5, patch: 6, pre: "", build: "20240505-rc0"))
 /// ```
@@ -67,12 +69,11 @@ pub const empty_semver = SemVer(0, 0, 0, "", "")
 /// Please see `type SemVerParseError` and `string_from_parsing_error()`.
 ///
 /// ```gleam
-/// // See `SemVerParseError` for possible errors returned for invalid inputs.
 /// parse("abc")
 /// -> MissingMajor("Leading Major SemVer Integer part is missing.")
 /// // To get the error String directly, simply:
-/// parse("abc") |> string_from_parsing_error
-/// // -> "Leading Major SemVer Integer part is missing."
+/// parse("abc") |> result.map_error(string_from_parsing_error)
+/// // -> Error("Leading Major SemVer Integer part is missing.")
 /// ```
 ///
 pub fn parse(version: String) -> Result(SemVer, SemVerParseError) {
@@ -84,19 +85,25 @@ pub fn parse(version: String) -> Result(SemVer, SemVerParseError) {
 
 /// Parse the given string into a `SemVer` more loosely than `parse()`.
 ///
-/// Please see `parse()` for a baseline on how to use this function.
+/// Please see `parse()` for a baseline on how this function works, as
+/// all inputs accepted by `parse()` are also accepted by `parse_loosely()`.
 ///
 /// The main additions over the behavior of `parse()` are as follows:
-/// * will accept a single leading 'v' in the input (e.g. "v1.2.3-pre+build")
+/// * will also accept a single leading 'v' in the input (e.g. "v1.2.3-pre+build")
 /// * will accept missing Minor and/or Patch versions (e.g. "1-pre+build")
 /// * will accept *any* non-alphanumeric character in the Pre-release and Build
-///   parts as long as they are still delimitated via the usual '-' or '+'.
+///   parts as long as they are still prefixed by the usual '-' or '+'.
 ///
 /// ## Examples
 ///
 /// ```gleam
 /// parse_loosely("")
 /// // -> Ok(SemVer(major: 0, minor; 0, patch: 0, pre: "", build: ""))
+/// ```
+///
+/// ```gleam
+/// parse_loosely("v1-rc0")
+/// // -> Ok(SemVer(major: 1, minor; 0, patch: 0, pre: "rc0", build: ""))
 /// ```
 ///
 /// ```gleam
@@ -117,9 +124,26 @@ pub fn parse_loosely(version: String) -> Result(SemVer, SemVerParseError) {
     }
 }
 
-/// Converts a `SemVer` into a `String` as defined at: https://semver.org
+/// Converts a `SemVer` into a `String` as defined on [semver.org](https://semver.org).
 ///
-/// TODO(aznashwan): samples
+/// ## Examples
+///
+/// ```gleam
+/// to_string(SemVer(1, 2, 3, "rc0", "20240505"))
+/// // -> "1.2.3-rc0+20240505"
+/// ````
+///
+/// Both the Pre-release ("-rc0") and Build ("+20240505") parts are optional:
+///
+/// ```gleam
+/// to_string(SemVer(1, 2, 3, "rc0", ""))
+/// // -> "1.2.3-rc0"
+/// ````
+///
+/// ```gleam
+/// to_string(SemVer(1, 2, 3, "", "20240505"))
+/// // -> "1.2.3+20240505"
+/// ````
 ///
 pub fn to_string(ver: SemVer) -> String {
     let core =
@@ -138,10 +162,23 @@ pub fn to_string(ver: SemVer) -> String {
     }
 }
 
-/// Converts a `SemVer` into a `String` as defined at: https://semver.org
-/// Will ommit the `minor.patch` (second and third part) if they are `0`.
+/// Converts a `SemVer` into a `String` as defined on: [semver.org](https://semver.org).
+/// Will omit the `Minor.Patch` (second and third parts) if they are `0`.
 ///
-/// TODO(aznashwan): samples
+/// Although its output will **not** be re-parseable using `parse()`,
+/// it is still compatible with `parse_loosely()`.
+///
+/// ## Examples
+///
+/// ```gleam
+/// to_string_concise(SemVer(1, 0, 0, "rc0", "20240505"))
+/// // -> "1-rc0+20240505"
+/// ````
+///
+/// ```gleam
+/// to_string_concise(SemVer(1, 2, 0, "rc0", "20240505"))
+/// // -> "1.2-rc0+20240505"
+/// ````
 ///
 pub fn to_string_concise(ver: SemVer) -> String {
     let core = ver.major |> int.to_string
@@ -270,50 +307,69 @@ fn split_by_codepoints(version: String) -> #(String, String, String, String) {
     )
 }
 
+/// Type whose variants can possibly be returned by `parse()` on invalid
+/// inputs, and a subset of them can be returned by `parse_loosely()`.
+///
+/// To get the error string from within it, simply use `the_error.msg`,
+/// or call `string_from_parsing_error(the_error)`.
+///
 pub type SemVerParseError {
-    // Returned when an input is empty:
+    /// Returned only by `parse()` when its input is empty.
     EmptyInput(msg: String)
 
-    // Returned when the Major part of a SemVer is missing.
-    // (i.e. there are no leading digits to the input String)
+    /// Returned when the Major part of a SemVer is missing.
+    /// I.e. there are no leading numeric digits to the input String.
     MissingMajor(msg: String)
-    // Returned when the Minor part of a SemVer is missing.
-    // (i.e. there is no Minor part like "1..3" or "1-pre+build")
+    /// Returned only by `parse()` when the Minor part of a SemVer is missing.
+    /// I.e. when there is no Minor part like "1..3" or "1-pre+build".
     MissingMinor(msg: String)
-    // Returned when the Patch part of a SemVer is missing.
-    // (i.e. there is no Patch part like "1.2.+build" or "1.2-pre+build")
+    /// Returned only by `parse()` when the Patch part of a SemVer is missing.
+    /// I.e. when there is no Patch part like "1.2.+build" or "1.2-pre+build".
     MissingPatch(msg: String)
-    // Returned when the Pre-release part of a SemVer is missing despite it
-    // having its leading hyphen present. (e.g. "1.2.3-" or "1.2.3-+build")
+    /// Returned only by `parse()` when the Pre-release part of a SemVer is
+    /// missing despite it having its leading hyphen present.
+    /// E.g: "1.2.3-" or "1.2.3-+build".
     MissingPreRelease(msg: String)
-    // Returned when the Build part of a SemVer is missing despite it
-    // having its leading plus present. (e.g. "1.2.3+")
+    // Returned only by `parse()` when the Build part of a SemVer
+    // is missing despite it having its leading plus present.
+    // E.g: "1.2.3+" or "1.2.3-rc0+".
     MissingBuild(msg: String)
 
-    // Returned when there is no Pre-release or Build separators ('-' and '+')
-    // between the Major.Minor.Patch core part of the SemVer and the rest.
+    /// Returned when there is no Pre-release or Build separators ('-' and '+')
+    /// between the Major.Minor.Patch core part of the SemVer and the rest.
+    /// E.g: "1.2.3rc0" or "1.2.3build5".
     MissingPreOrBuildSeparator(msg: String)
 
-    // Returned when the Major part of a SemVer is malformed.
+    /// Returned when the Major part of a SemVer is malformed.
     InvalidMajor(msg: String)
-    // Returned when the Minor part of a SemVer is malformed.
+    /// Returned when the Minor part of a SemVer is malformed.
     InvalidMinor(msg: String)
-    // Returned when the Patch part of a SemVer is malformed.
+    /// Returned when the Patch part of a SemVer is malformed.
     InvalidPatch(msg: String)
-    // Returned when the Pre-release tags part of a SemVer is malformed.
-    // This includes when it is empty ("1.2.3-+build"), or has invalid chars.
+    /// Returned when the Pre-release tags part of a SemVer is malformed.
+    /// This includes when it is empty ("1.2.3-+build"), or has invalid chars.
     InvalidPreRelease(msg: String)
-    // Returned when the Build tags part of a SemVer is malformed.
-    // This includes when it is empty ("1.2.3-pre+"), or has invalid chars.
+    /// Returned when the Build tags part of a SemVer is malformed.
+    /// This includes when it is empty ("1.2.3-pre+"), or has invalid chars.
     InvalidBuild(msg: String)
 
-    // Internal UTF conversion error which you should NEVER get.
+    /// Internal UTF conversion error which you should NEVER get.
     InternalCodePointError(msg: String)
-    // Internal error variant only used for testing which you should NEVER get.
+    /// Internal error variant only used for testing which you should NEVER get.
     InternalError(msg: String)
 }
 
-// TODO(aznashwan): docs
+/// Returns the inner String from any `SemVerParseError` type variant.
+///
+/// This is equivalent to simply using `the_error.msg`.
+///
+/// ## Examples
+///
+/// ```gleam
+/// string_from_parsing_error(EmptyInput("Input SemVer string is empty."))
+/// // -> "Input SemVer string is empty."
+/// ```
+///
 pub fn string_from_parsing_error(error: SemVerParseError) -> String {
     error.msg
 }
