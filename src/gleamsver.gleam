@@ -11,6 +11,7 @@
 
 import gleam/int
 import gleam/list
+import gleam/order
 import gleam/result
 import gleam/string
 
@@ -204,6 +205,92 @@ pub fn to_string_concise(ver: SemVer) -> String {
     case ver.build {
         "" -> with_pre
         build -> with_pre <> "+" <> build
+    }
+}
+
+/// Compares **only** the core `Major.Minor.Patch` versions of the two given
+/// `SemVer`s, returning the `gleam/order.Order` of the resulting comparisons.
+///
+/// It does **not** compare the Pre-release or Build tags in any way!
+/// If you want to check for exact equality, use `are_equal()`.
+///
+/// ## Examples:
+///
+/// ```gleam
+/// compare_core(SemVer(1, 2, 3, "", ""), with: SemVer(5, 6, 7, "", ""))
+/// // -> Lt
+///
+/// compare_core(SemVer(1, 2, 3, "", ""), with: SemVer(1, 2, 3, "", ""))
+/// // -> Eq
+///
+/// compare_core(SemVer(5, 6, 7, "rc0", "20240505"), with: SemVer(1, 2, 3, "rc5", "30240505"))
+/// // -> Gt
+///
+/// // NOTE: will **not** compare Pre-release and Build tags at all!
+/// compare_core(SemVer(1, 2, 3, "rc0", "20240505"), with: SemVer(1, 2, 3, "rc5", "30240505"))
+/// // -> Eq
+/// ```
+///
+pub fn compare_core(v1: SemVer, with v2: SemVer) -> order.Order {
+    case int.compare(v1.major, v2.major) {
+        order.Eq -> {
+            case int.compare(v1.minor, v2.minor) {
+                order.Eq -> int.compare(v1.patch, v2.patch)
+                non_equal -> non_equal
+            }
+        }
+        non_equal -> non_equal
+    }
+}
+
+/// Compares **only** the core `Major.Minor.Patch` of the two given `SemVer`s,
+/// returning `True` only if they are exactly equal.
+///
+/// If you would like an exact equality check of the Pre-release and Build
+/// parts as well, please use `are_equal()`.
+///
+/// ## Examples
+///
+/// ```gleams
+/// are_equal_core(SemVer(1, 2, 3, "", ""), with: SemVer(1, 2, 3, "", ""))
+/// // -> True
+///
+/// // NOTE: Pre-release and Build parts are **not** compared!
+/// are_equal_core(SemVer(1, 2, 3, "", ""), with: SemVer(1, 2, 3, "rc0", "20250505"))
+/// // -> True
+///
+/// are_equal_core(SemVer(1, 2, 3, "", ""), with: SemVer(4, 5, 6, "", ""))
+/// // -> False
+/// ```
+///
+pub fn are_equal_core(v1: SemVer, with v2: SemVer) -> Bool {
+    case compare_core(v1, with: v2) {
+        order.Eq -> True
+        _ -> False
+    }
+}
+
+/// Compares the core `Major.Minor.Patch` and the Pre-release and Build tags
+/// of the two given `SemVer`s, returning `True` only if they are exactly equal.
+///
+/// ## Examples
+///
+/// ```gleams
+/// are_equal(SemVer(1, 2, 3, "rc5", ""), with: SemVer(1, 2, 3, "rc5", ""))
+/// // -> True
+///
+/// // NOTE: Pre-release and Build parts must be exactly equal too!
+/// are_equal(SemVer(1, 2, 3, "", ""), with: SemVer(1, 2, 3, "rc0", "20250505"))
+/// // -> False
+/// ```
+///
+pub fn are_equal(v1: SemVer, with v2: SemVer) -> Bool {
+    case compare_core(v1, with: v2) {
+        order.Eq -> case #(v1.pre == v2.pre, v1.build == v2.build) {
+            #(True, True) -> True
+            _ -> False
+        }
+        _ -> False
     }
 }
 

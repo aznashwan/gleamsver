@@ -8,6 +8,7 @@ import gleam/io
 
 import gleam/int
 import gleam/list
+import gleam/order
 import gleam/result
 
 import gleeunit
@@ -188,6 +189,10 @@ const negative_strict_parse_testcases = [
     #(
         "1.2.3-$+$",
         gleamsver.InvalidPreRelease("Pre-release part \"$\" is invalid: the following character is not allowed by the SemVer standard: \"$\""),
+    ),
+    #(
+        "1.2.3.4",
+        gleamsver.MissingPreOrBuildSeparator("Missing '-' or '+' separator between core SemVer part and Pre-release ('-rc5') or Build ('+2024.05.05') parts. Got: \".4\"")
     )
 ]
 
@@ -404,6 +409,238 @@ pub fn parse_loosely_semi_valid_inputs_test() {
     })
     |> list.append(loose_semver_testcases, _)
     |> list.index_map(testfn)
+}
+
+// Tests `to_string_concise()` produces versions strings
+// which can be re-parsed with with `parse_loosely()`.
+pub fn to_string_concise_parse_loosely_symmetry_test() {
+    let testfn = fn(testcase, idx) {
+        let #(input, expected) = testcase
+
+        io.println(
+            "Running to_string_concise() test #" <> int.to_string(idx)
+            <> " on input: '" <> input <> "'")
+
+        let assert Ok(parsed) = input |> gleamsver.parse_loosely
+
+        parsed
+        |> gleamsver.to_string_concise
+        |> gleamsver.parse_loosely
+        |> should.equal(Ok(expected))
+    }
+
+    positive_strict_testcases
+    |> list.append(loose_semver_testcases, _)
+    |> list.index_map(testfn)
+}
+
+const compare_core_testcases = [
+    #(
+        SemVer(0, 0, 0, "", ""),
+        SemVer(0, 0, 0, "", ""),
+        order.Eq,
+    ),
+    #(
+        SemVer(1, 0, 0, "", ""),
+        SemVer(1, 0, 0, "", ""),
+        order.Eq,
+    ),
+    #(
+        SemVer(1, 2, 0, "", ""),
+        SemVer(1, 2, 0, "", ""),
+        order.Eq,
+    ),
+    #(
+        SemVer(1, 2, 3, "", ""),
+        SemVer(1, 2, 3, "", ""),
+        order.Eq,
+    ),
+
+    #(
+        SemVer(1, 0, 0, "", ""),
+        SemVer(0, 0, 0, "", ""),
+        order.Gt,
+    ),
+    #(
+        SemVer(1, 1, 0, "", ""),
+        SemVer(1, 0, 0, "", ""),
+        order.Gt,
+    ),
+    #(
+        SemVer(1, 2, 1, "", ""),
+        SemVer(1, 2, 0, "", ""),
+        order.Gt,
+    ),
+    #(
+        SemVer(1, 2, 1, "", ""),
+        SemVer(1, 2, 0, "rc0", "123"),
+        order.Gt,
+    ),
+    #(
+        SemVer(1, 2, 1, "rc0", "123"),
+        SemVer(1, 2, 0, "", ""),
+        order.Gt,
+    ),
+
+    #(
+        SemVer(0, 0, 0, "", ""),
+        SemVer(1, 0, 0, "", ""),
+        order.Lt,
+    ),
+    #(
+        SemVer(1, 0, 0, "", ""),
+        SemVer(1, 1, 0, "", ""),
+        order.Lt,
+    ),
+    #(
+        SemVer(1, 2, 0, "", ""),
+        SemVer(1, 2, 1, "", ""),
+        order.Lt,
+    ),
+    #(
+        SemVer(1, 2, 0, "", ""),
+        SemVer(1, 2, 1, "", ""),
+        order.Lt,
+    ),
+    #(
+        SemVer(1, 2, 0, "rc0", "123"),
+        SemVer(1, 2, 1, "", ""),
+        order.Lt,
+    ),
+    #(
+        SemVer(1, 2, 0, "", ""),
+        SemVer(1, 2, 1, "rc0", "123"),
+        order.Lt,
+    ),
+
+    #(
+        SemVer(1, 0, 0, "123", ""),
+        SemVer(1, 0, 0, "456", ""),
+        order.Eq,
+    ),
+    #(
+        SemVer(1, 2, 0, "", "123"),
+        SemVer(1, 2, 0, "", "456"),
+        order.Eq,
+    ),
+    #(
+        SemVer(1, 2, 0, "123", "789"),
+        SemVer(1, 2, 0, "456", "123"),
+        order.Eq,
+    ),
+]
+
+pub fn compare_core_test() {
+    let testfn = fn(input: #(SemVer, SemVer, order.Order), idx: Int) {
+        let #(first, second, result) = input
+
+        io.println(
+            "Running compare_core() test #" <> int.to_string(idx) <> " between '"
+            <> gleamsver.to_string(first) <> "' and '"
+            <> gleamsver.to_string(second) <> "'")
+
+        gleamsver.compare_core(first, with: second)
+        |> should.equal(result)
+    }
+
+    compare_core_testcases 
+    |> list.index_map(testfn)
+}
+
+pub fn are_equal_core_test() {
+    let testfn = fn(input: #(SemVer, SemVer, order.Order), idx: Int) {
+        let #(first, second, result) = input
+
+        io.println(
+            "Running are_equal_core() test #" <> int.to_string(idx)
+            <> " between '" <> gleamsver.to_string(first) <> "' and '"
+            <> gleamsver.to_string(second) <> "'")
+
+        let bool_result = case result {
+            order.Eq -> True
+            _ -> False
+        }
+
+        gleamsver.are_equal_core(first, with: second)
+        |> should.equal(bool_result)
+    }
+
+    compare_core_testcases 
+    |> list.index_map(testfn)
+}
+
+const are_equal_special_testcases = [
+    #(
+        SemVer(1, 2, 3, "a", ""),
+        SemVer(1, 2, 3, "", ""),
+        False
+    ),
+    #(
+        SemVer(1, 2, 3, "", "a"),
+        SemVer(1, 2, 3, "", ""),
+        False
+    ),
+    #(
+        SemVer(1, 2, 3, "", ""),
+        SemVer(1, 2, 3, "a", ""),
+        False
+    ),
+    #(
+        SemVer(1, 2, 3, "", ""),
+        SemVer(1, 2, 3, "", "a"),
+        False
+    ),
+
+    #(
+        SemVer(1, 2, 3, "a", ""),
+        SemVer(1, 2, 3, "a", ""),
+        True
+    ),
+    #(
+        SemVer(1, 2, 3, "", "a"),
+        SemVer(1, 2, 3, "", "a"),
+        True
+    ),
+
+    #(
+        SemVer(1, 2, 3, "rc0", "20240505"),
+        SemVer(1, 2, 3, "rc0", "20240505"),
+        True
+    ),
+    #(
+        SemVer(1, 2, 3, "rc1", "20250505"),
+        SemVer(1, 2, 3, "rc0", "20240505"),
+        False 
+    ),
+]
+
+pub fn are_equal_test() {
+    let testfn = fn(input: #(SemVer, SemVer, Bool), idx: Int) {
+        let #(first, second, result) = input
+
+        io.println(
+            "Running are_equal() test #" <> int.to_string(idx)
+            <> " between '" <> gleamsver.to_string(first) <> "' and '"
+            <> gleamsver.to_string(second) <> "'")
+
+        gleamsver.are_equal(first, with: second)
+        |> should.equal(result)
+    }
+
+    // Derive testcases from compare's testcases:
+    let core_to_equal_test = fn(testcase: #(SemVer, SemVer, order.Order)) {
+        let #(first, second, comparison) = testcase
+        case comparison {
+            order.Eq -> #(first, second, first.pre == second.pre && first.build == second.build)
+            _ -> #(first, second, False)
+        }
+    }
+
+    compare_core_testcases
+    |> list.map(core_to_equal_test)
+    |> list.append(are_equal_special_testcases)
+    |> list.index_map(testfn)
+
 }
 
 pub fn main() {
