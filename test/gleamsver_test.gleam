@@ -1066,6 +1066,40 @@ pub fn are_compatible_test() {
     |> list.index_map(testfn)
 }
 
+pub fn guard_version_compatible_test() {
+    let success_string = "when successful"
+    let failure_string = "when unsuccessful"
+
+    let testfn = fn(input: #(SemVer, SemVer, Bool), idx: Int) {
+        let #(first, second, result) = input
+
+        io.println(
+            "Running guard_version_compatible() test #"
+            <> int.to_string(idx) <> " between '"
+            <> gleamsver.to_string(first) <> "' and '"
+            <> gleamsver.to_string(second) <> "'")
+
+        let expected_result = case result {
+            True -> success_string
+            False -> failure_string
+        }
+
+        let test_result = {
+            use <- gleamsver.guard_version_compatible(
+                version: first,
+                compatible_with: second,
+                if_incompatible_return: failure_string)
+            success_string
+        }
+
+        test_result
+        |> should.equal(expected_result)
+    }
+
+    are_compatible_testcases
+    |> list.index_map(testfn)
+}
+
 pub fn main() {
     gleeunit.main()
 }

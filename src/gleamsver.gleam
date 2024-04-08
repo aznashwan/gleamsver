@@ -750,3 +750,38 @@ fn compare_pre_release_tag(tag1: String, tag2: String) -> order.Order {
         #(Ok(int1), Ok(int2)) -> int.compare(int1, int2)
     }
 }
+
+/// Guards that the given first [`SemVer`](#SemVer) is compatible with
+/// with the second [`SemVer`](#SemVer), running and returning the result
+/// of the `if_compatible` callback function if so,
+/// or returning the `if_incompatible_return` value if not.
+///
+/// The semantics of the compatibility check are as dictated by the
+/// [`are_compatible`](#are_compatible) function.
+///
+/// ## Examples
+///
+/// ```gleam
+/// let uncompressed_message = "Hello!"
+/// let message = {
+///   use <- gleamsver.guard_version_compatible(
+///       version: server_version_with_compression,
+///       compatible_with: current_server_version,
+///       if_incompatible_return: uncompressed_message,
+///   )
+///
+///   // Compression will only occur if the above guard succeeds:
+///   uncompressed_message <> ", but compressed ;)"
+/// }
+/// io.println(message)  // depends on version compatibility
+/// ```
+pub fn guard_version_compatible(
+        version v1: SemVer,
+        compatible_with v2: SemVer,
+        if_incompatible_return default_value: t,
+        if_compatible operation_if_compatible: fn() -> t) -> t {
+    case are_compatible(v1, with: v2) {
+        True -> operation_if_compatible()
+        False -> default_value
+    }
+}
