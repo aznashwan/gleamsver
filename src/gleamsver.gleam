@@ -20,10 +20,15 @@ import gleam/string
 /// (or SemVer) 2.0.0 definition as described on [semver.org](https://semver.org).
 pub type SemVer {
     SemVer(
+        /// Leading Major Integer version.
         major: Int,
+        /// Middle Minor Integer version.
         minor: Int,
+        /// Third Patch Integer version.
         patch: Int,
+        /// String Pre-build tag(s) of the version.
         pre: String,
+        /// String Build tag(s) of the version.
         build: String)
 }
 
