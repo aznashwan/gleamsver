@@ -640,7 +640,430 @@ pub fn are_equal_test() {
     |> list.map(core_to_equal_test)
     |> list.append(are_equal_special_testcases)
     |> list.index_map(testfn)
+}
 
+const compare_pre_release_strings_testcases = [
+    #(
+        "",
+        "",
+        order.Eq,
+    ),
+    #(
+        "",
+        "anything",
+        order.Gt,
+    ),
+    #(
+        "anything",
+        "",
+        order.Lt,
+    ),
+    #(
+        "rc0.123.7",
+        "rc0.123.7",
+        order.Eq,
+    ),
+    // Pre-release strings with more parts => higher.
+    #(
+        "alpha",
+        "alpha.1",
+        order.Lt,
+    ),
+    #(
+        "alpha.1.2",
+        "alpha.1",
+        order.Gt,
+    ),
+    // Integer parts should be compared as Integers:
+    #(
+        "alpha.7",
+        "alpha.8",
+        order.Lt,
+    ),
+    #(
+        "alpha.8",
+        "alpha.7",
+        order.Gt,
+    ),
+    #(
+        "alpha.10.123",
+        "alpha.8.123",
+        order.Gt,
+    ),
+    // String parts should be compared lexicographically:
+    #(
+        "alpha.abc",
+        "alpha.abcd",
+        order.Lt,
+    ),
+    #(
+        "alpha.abcd",
+        "alpha.abc",
+        order.Gt,
+    ),
+    #(
+        "alphA.123",
+        "alpha.123",
+        order.Lt,
+    ),
+    #(
+        "alphA.123",
+        "alpha.123",
+        order.Lt,
+    ),
+    #(
+        "alpha.123b",
+        "alpha.123A",
+        order.Gt,
+    ),
+    #(
+        "alpha01",
+        "alpha23",
+        order.Lt,
+    ),
+]
+
+pub fn compare_pre_release_strings_test() {
+    let testfn = fn(input: #(String, String, order.Order), idx: Int) {
+        let #(first, second, result) = input
+
+        io.println(
+            "Running compare() test #" <> int.to_string(idx) <> " between '"
+            <> first <> "' and '" <> second <> "'")
+
+        gleamsver.compare_pre_release_strings(first, with: second)
+        |> should.equal(result)
+    }
+
+    compare_pre_release_strings_testcases
+    |> list.index_map(testfn)
+}
+
+const compare_testcases = [
+    #(
+        SemVer(0, 0, 0, "", ""),
+        SemVer(0, 0, 0, "", ""),
+        order.Eq,
+    ),
+    #(
+        SemVer(1, 0, 0, "", ""),
+        SemVer(1, 0, 0, "", ""),
+        order.Eq,
+    ),
+    #(
+        SemVer(1, 2, 0, "", ""),
+        SemVer(1, 2, 0, "", ""),
+        order.Eq,
+    ),
+    #(
+        SemVer(1, 2, 3, "", ""),
+        SemVer(1, 2, 3, "", ""),
+        order.Eq,
+    ),
+
+    #(
+        SemVer(1, 0, 0, "", ""),
+        SemVer(0, 0, 0, "", ""),
+        order.Gt,
+    ),
+    #(
+        SemVer(1, 1, 0, "", ""),
+        SemVer(1, 0, 0, "", ""),
+        order.Gt,
+    ),
+    #(
+        SemVer(1, 2, 1, "", ""),
+        SemVer(1, 2, 0, "", ""),
+        order.Gt,
+    ),
+    #(
+        SemVer(1, 2, 1, "", ""),
+        SemVer(1, 2, 0, "rc0", "123"),
+        order.Gt,
+    ),
+    #(
+        SemVer(1, 2, 1, "rc0", "123"),
+        SemVer(1, 2, 0, "", ""),
+        order.Gt,
+    ),
+
+    #(
+        SemVer(0, 0, 0, "", ""),
+        SemVer(1, 0, 0, "", ""),
+        order.Lt,
+    ),
+    #(
+        SemVer(1, 0, 0, "", ""),
+        SemVer(1, 1, 0, "", ""),
+        order.Lt,
+    ),
+    #(
+        SemVer(1, 2, 0, "", ""),
+        SemVer(1, 2, 1, "", ""),
+        order.Lt,
+    ),
+    #(
+        SemVer(1, 2, 0, "", ""),
+        SemVer(1, 2, 1, "", ""),
+        order.Lt,
+    ),
+    #(
+        SemVer(1, 2, 0, "rc0", "123"),
+        SemVer(1, 2, 1, "", ""),
+        order.Lt,
+    ),
+    #(
+        SemVer(1, 2, 0, "", ""),
+        SemVer(1, 2, 1, "rc0", "123"),
+        order.Lt,
+    ),
+
+    #(
+        SemVer(1, 0, 0, "123", ""),
+        SemVer(1, 0, 0, "456", ""),
+        order.Lt,
+    ),
+    #(
+        SemVer(1, 2, 0, "", "123"),
+        SemVer(1, 2, 0, "", "456"),
+        order.Eq,
+    ),
+    #(
+        SemVer(1, 2, 0, "123", "789"),
+        SemVer(1, 2, 0, "456", "123"),
+        order.Lt,
+    ),
+
+
+    #(
+        SemVer(1, 2, 3, "rcA", ""),
+        SemVer(1, 2, 3, "rcB", ""),
+        order.Lt,
+    ),
+    #(
+        SemVer(1, 2, 3, "rca", ""),
+        SemVer(1, 2, 3, "rcA", ""),
+        order.Gt,
+    ),
+    #(
+        SemVer(1, 2, 3, "rc2", ""),
+        SemVer(1, 2, 3, "rc3", ""),
+        order.Lt,
+    ),
+
+    #(
+        SemVer(1, 2, 3, "", ""),
+        SemVer(1, 2, 3, "rc0", ""),
+        order.Gt,
+    ),
+    #(
+        SemVer(1, 2, 3, "", ""),
+        SemVer(1, 2, 3, "rc3.abc", ""),
+        order.Gt,
+    ),
+
+    #(
+        SemVer(1, 2, 3, "rc0", ""),
+        SemVer(1, 2, 3, "", ""),
+        order.Lt,
+    ),
+    #(
+        SemVer(1, 2, 3, "rc3.abc", ""),
+        SemVer(1, 2, 3, "", ""),
+        order.Lt,
+    ),
+
+    #(
+        SemVer(1, 2, 3, "rc0.123", ""),
+        SemVer(1, 2, 3, "rc0.123", ""),
+        order.Eq,
+    ),
+    #(
+        SemVer(1, 2, 3, "rc0.123", ""),
+        SemVer(1, 2, 3, "rc0.124", ""),
+        order.Lt,
+    ),
+    #(
+        SemVer(1, 2, 3, "rc0.124", ""),
+        SemVer(1, 2, 3, "rc0.123", ""),
+        order.Gt,
+    ),
+
+    #(
+        SemVer(1, 2, 3, "rc0.124", ""),
+        SemVer(1, 2, 3, "rc1.123", ""),
+        order.Lt,
+    ),
+    #(
+        SemVer(1, 2, 3, "rc07", ""),
+        SemVer(1, 2, 3, "rc6", ""),
+        order.Lt,
+    ),
+    #(
+        SemVer(1, 2, 3, "0.3.7", ""),
+        SemVer(1, 2, 3, "0.3.7", ""),
+        order.Eq,
+    ),
+    #(
+        SemVer(1, 2, 3, "0.3.8", ""),
+        SemVer(1, 2, 3, "0.3.7", ""),
+        order.Gt,
+    ),
+    #(
+        SemVer(1, 2, 3, "0.3.7", ""),
+        SemVer(1, 2, 3, "0.3.12", ""),
+        order.Lt,
+    ),
+]
+
+pub fn compare_test() {
+    let testfn = fn(input: #(SemVer, SemVer, order.Order), idx: Int) {
+        let #(first, second, result) = input
+
+        io.println(
+            "Running compare() test #" <> int.to_string(idx) <> " between '"
+            <> gleamsver.to_string(first) <> "' and '"
+            <> gleamsver.to_string(second) <> "'")
+
+        gleamsver.compare(first, with: second)
+        |> should.equal(result)
+    }
+
+    compare_testcases 
+    |> list.index_map(testfn)
+}
+
+// Direct examples lifted from https://semver.org/#spec-item-11
+const parse_and_compare_e2e_testcases = [
+    #(
+        "1.0.0-alpha",
+        "1.0.0-alpha.1",
+        order.Lt,
+    ),
+    #(
+        "1.0.0-alpha.1",
+        "1.0.0-alpha.beta",
+        order.Lt,
+    ),
+    #(
+        "1.0.0-alpha.beta",
+        "1.0.0-beta",
+        order.Lt,
+    ),
+    #(
+        "1.0.0-beta",
+        "1.0.0-beta.2",
+        order.Lt,
+    ),
+    #(
+        "1.0.0-beta.2",
+        "1.0.0-beta.11",
+        order.Lt,
+    ),
+    #(
+        "1.0.0-beta.11",
+        "1.0.0-rc.1",
+        order.Lt,
+    ),
+    #(
+        "1.0.0-rc.1",
+        "1.0.0",
+        order.Lt,
+    )
+]
+
+pub fn parse_and_compare_e2e_test() {
+    let testfn = fn(input: #(String, String, order.Order), idx: Int) {
+        let #(first, second, result) = input
+
+        io.println(
+            "Running e2e test #" <> int.to_string(idx) <> " between '"
+            <> first <> "' and '" <> second <> "'")
+
+        let assert Ok(v1) = gleamsver.parse(first)
+        let assert Ok(v2) = gleamsver.parse(second)
+
+        gleamsver.compare(v1, with: v2)
+        |> should.equal(result)
+    }
+
+    parse_and_compare_e2e_testcases
+    |> list.index_map(testfn)
+}
+
+const are_compatible_testcases = [
+    #(
+        SemVer(1, 2, 3, "", ""),
+        SemVer(1, 2, 3, "", ""),
+        True,
+    ),
+    #(
+        SemVer(1, 2, 3, "", ""),
+        SemVer(1, 2, 4, "", ""),
+        True,
+    ),
+    #(
+        SemVer(1, 2, 4, "", ""),
+        SemVer(1, 2, 3, "", ""),
+        False,
+    ),
+    #(
+        SemVer(1, 2, 4, "", ""),
+        SemVer(2, 2, 3, "", ""),
+        False,
+    ),
+    #(
+        SemVer(2, 2, 3, "", ""),
+        SemVer(1, 2, 4, "", ""),
+        False,
+    ),
+    #(
+        SemVer(1, 2, 3, "rc0", ""),
+        SemVer(1, 2, 3, "rc0", ""),
+        True,
+    ),
+    #(
+        SemVer(1, 2, 3, "rc0", ""),
+        SemVer(1, 2, 4, "", ""),
+        True,
+    ),
+    #(
+        SemVer(1, 2, 3, "", ""),
+        SemVer(1, 2, 3, "rc0", ""),
+        False,
+    ),
+    #(
+        SemVer(1, 2, 3, "rc0", ""),
+        SemVer(1, 2, 3, "", ""),
+        True,
+    ),
+    #(
+        SemVer(1, 2, 3, "", ""),
+        SemVer(1, 2, 3, "", "20240505"),
+        True
+    ),
+    #(
+        SemVer(1, 2, 3, "", "20240505"),
+        SemVer(1, 2, 3, "", ""),
+        True
+    ),
+]
+
+pub fn are_compatible_test() {
+    let testfn = fn(input: #(SemVer, SemVer, Bool), idx: Int) {
+        let #(first, second, result) = input
+
+        io.println(
+            "Running are_compatible() test #" <> int.to_string(idx) <> " between '"
+            <> gleamsver.to_string(first) <> "' and '"
+            <> gleamsver.to_string(second) <> "'")
+
+        gleamsver.are_compatible(first, with: second)
+        |> should.equal(result)
+    }
+
+    are_compatible_testcases
+    |> list.index_map(testfn)
 }
 
 pub fn main() {

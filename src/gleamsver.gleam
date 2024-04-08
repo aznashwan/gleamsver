@@ -38,9 +38,11 @@ pub const empty_semver = SemVer(0, 0, 0, "", "")
 /// Parses the given string into a `SemVer`.
 ///
 /// Parsing rules are EXACTLY based on the rules defined on [semver.org](https://semver.org).
-/// If you would prefer some leniency when parsing, see `parse_loosely()`.
 ///
-/// See `SemVerParseError` for possible error variants returned by `parse()`.
+/// If you would prefer some leniency when parsing, see [`parse_loosely`](#parse_loosely).
+///
+/// See [`SemVerParseError`](#SemVerParseError) for possible error variants
+/// returned by [`parse`](#parse).
 ///
 /// ## Examples
 ///
@@ -69,10 +71,11 @@ pub const empty_semver = SemVer(0, 0, 0, "", "")
 ///
 /// ## Possible parsing errors
 ///
-/// The `parse()` function aims to return a relevant error variant and
-/// accompanying helpful String message on parsing failures.
+/// The [`parse`](#parse) function aims to return a relevant error variant
+/// and  accompanying helpful `String` message on parsing failures.
 ///
-/// Please see `type SemVerParseError` and `string_from_parsing_error()`.
+/// Please see [`type SemVerParseError`](#SemVerParseError) and
+/// [`string_from_parsing_error`](#string_from_parsing_error).
 ///
 /// ```gleam
 /// parse("abc")
@@ -91,10 +94,10 @@ pub fn parse(version: String) -> Result(SemVer, SemVerParseError) {
 
 /// Parse the given string into a `SemVer` more loosely than `parse()`.
 ///
-/// Please see `parse()` for a baseline on how this function works, as
-/// all inputs accepted by `parse()` are also accepted by `parse_loosely()`.
+/// Please see [`parse`](#parse) for a baseline on how this function works, as
+/// all inputs accepted by [`parse`](#parse) are also accepted by `parse_loosely`.
 ///
-/// The main additions over the behavior of `parse()` are as follows:
+/// The main additions over the behavior of [`parse`](#parse) are as follows:
 /// * will also accept a single leading 'v' in the input (e.g. "v1.2.3-pre+build")
 /// * will accept missing Minor and/or Patch versions (e.g. "1-pre+build")
 /// * will accept *any* non-alphanumeric character in the Pre-release and Build
@@ -171,8 +174,8 @@ pub fn to_string(ver: SemVer) -> String {
 /// Converts a `SemVer` into a `String` as defined on: [semver.org](https://semver.org).
 /// Will omit the `Minor.Patch` (second and third parts) if they are `0`.
 ///
-/// Although its output will **not** be re-parseable using `parse()`,
-/// it is still compatible with `parse_loosely()`.
+/// Although its output will **not** be re-parseable using [`parse`](#parse),
+/// it is still compatible with [`parse_loosely`](#parse_loosely).
 ///
 /// ## Examples
 ///
@@ -213,11 +216,58 @@ pub fn to_string_concise(ver: SemVer) -> String {
     }
 }
 
+
+/// Compares the core `Major.Minor.Patch` versions and Pre-release tags of the
+/// two given [`SemVer`](#SemVer)s, returning the `gleam/order.Order` of the resulting
+/// comparisons as described on [semver.org](https://semver.org/#spec-item-11).
+///
+/// If you would like to only compare core versions too, use
+/// [`compare_core`](#compare_core).
+///
+/// If you want to check for exact equality, use [`are_equal`](#are_equal).
+///
+/// Build tag(s) are **never** compared.
+///
+/// ## Examples:
+///
+/// ```gleam
+/// compare(SemVer(1, 2, 3, "", ""), with: SemVer(5, 6, 7, "", ""))
+/// // -> Lt
+///
+/// compare(SemVer(1, 2, 3, "rc0", ""), with: SemVer(1, 2, 3, "rc0", ""))
+/// // -> Eq
+///
+/// compare(SemVer(5, 6, 7, "rc0", "20240505"), with: SemVer(1, 2, 3, "rc5", "30240505"))
+/// // -> Gt
+///
+/// // NOTE: pre-release tags are compared:
+/// compare(SemVer(1, 2, 3, "alpha", ""), with: SemVer(1, 2, 3, "alpha.1", ""))
+/// // -> Lt
+///
+/// compare(SemVer(1, 2, 3, "alpha.12", ""), with: SemVer(1, 2, 3, "alpha.5", ""))
+/// // -> Gt
+///
+/// // NOTE: will **not** compare Build tags at all!
+/// compare(SemVer(1, 2, 3, "rc5", "20240505"), with: SemVer(1, 2, 3, "rc5", "30240505"))
+/// // -> Eq
+/// ```
+///
+pub fn compare(v1: SemVer, with v2: SemVer) -> order.Order {
+    case compare_core(v1, with: v2) {
+        order.Eq -> compare_pre_release_strings(v1.pre, with: v2.pre)
+        non_equal -> non_equal
+    }
+}
+
 /// Compares **only** the core `Major.Minor.Patch` versions of the two given
-/// `SemVer`s, returning the `gleam/order.Order` of the resulting comparisons.
+/// [`SemVer`](#SemVer)s, returning the `gleam/order.Order` of the resulting
+/// comparisons.
 ///
 /// It does **not** compare the Pre-release or Build tags in any way!
-/// If you want to check for exact equality, use `are_equal()`.
+///
+/// If you would like to compare Pre-release tags too, use [`compare`](#compare).
+///
+/// If you want to check for exact equality, use [`are_equal`](#are_equal).
 ///
 /// ## Examples:
 ///
@@ -248,11 +298,49 @@ pub fn compare_core(v1: SemVer, with v2: SemVer) -> order.Order {
     }
 }
 
-/// Compares **only** the core `Major.Minor.Patch` of the two given `SemVer`s,
-/// returning `True` only if they are exactly equal.
+/// Checks whether the first given `SemVer` is compatible with the second
+/// based on the [compatibility rules described on semver.org](https://semver.org/#semantic-versioning-specification-semver).
+///
+/// In order for a version to count as compatible with another, the Major part
+/// of the versions must be **exactly equal**, and the Minor, Patch and
+/// Pre-release parts of the first must be less than or equal to the second's.
+///
+/// If you would like to compare versions in general, use [`compare`](#compare)
+/// or [compare_core](#compare_core).
+///
+/// ## Examples
+///
+/// ```gleam
+/// are_compatible(SemVer(1, 2, 3, "", ""), SemVer(1, 2, 4, "", ""))
+/// -> True
+///
+/// are_compatible(SemVer(2, 0, 0, "", ""), SemVer(1, 2, 3, "", ""))
+/// -> False
+///
+/// // NOTE: Any Pre-release tags have lower precedence than full release:
+/// are_compatible(SemVer(1, 2, 3, "", ""), SemVer(1, 2, 3, "alpha.1", ""))
+/// -> False
+///
+/// // NOTE: Build tags are **not** compared:
+/// are_compatible(SemVer(1, 2, 3, "", "20240505"), SemVer(1, 2, 3, "", ""))
+/// -> True
+/// ```
+///
+pub fn are_compatible(v1: SemVer, with v2: SemVer) -> Bool {
+    case v1.major == v2.major {
+        False -> False
+        True -> case compare(v1, with: v2) {
+            order.Gt -> False
+            _ -> True
+        }
+    }
+}
+
+/// Compares **only** the core `Major.Minor.Patch` of the two given
+/// [`SemVer`](#SemVer)s, returning `True` only if they are exactly equal.
 ///
 /// If you would like an exact equality check of the Pre-release and Build
-/// parts as well, please use `are_equal()`.
+/// parts as well, please use [`are_equal`](#are_equal).
 ///
 /// ## Examples
 ///
@@ -276,11 +364,12 @@ pub fn are_equal_core(v1: SemVer, with v2: SemVer) -> Bool {
 }
 
 /// Compares the core `Major.Minor.Patch` and the Pre-release and Build tags
-/// of the two given `SemVer`s, returning `True` only if they are exactly equal.
+/// of the two given [`SemVer`](#SemVer)s, returning `True` only if they
+/// are exactly equal.
 ///
 /// ## Examples
 ///
-/// ```gleams
+/// ```gleam
 /// are_equal(SemVer(1, 2, 3, "rc5", ""), with: SemVer(1, 2, 3, "rc5", ""))
 /// // -> True
 ///
@@ -399,30 +488,30 @@ fn split_by_codepoints(version: String) -> #(String, String, String, String) {
     )
 }
 
-/// Type whose variants can possibly be returned by `parse()` on invalid
-/// inputs, and a subset of them can be returned by `parse_loosely()`.
+/// Type whose variants can possibly be returned by [`parse`](#parse) on invalid
+/// inputs, and a subset of them can be returned by [`parse_loosely`](#parse_loosely).
 ///
 /// To get the error string from within it, simply use `the_error.msg`,
-/// or call `string_from_parsing_error(the_error)`.
+/// or call [`string_from_parsing_error(the_error)`](#string_from_parsing_error).
 ///
 pub type SemVerParseError {
-    /// Returned only by `parse()` when its input is empty.
+    /// Returned only by [`parse`](#parse) when its input is empty.
     EmptyInput(msg: String)
 
     /// Returned when the Major part of a SemVer is missing.
     /// I.e. there are no leading numeric digits to the input String.
     MissingMajor(msg: String)
-    /// Returned only by `parse()` when the Minor part of a SemVer is missing.
+    /// Returned only by [`parse`](#parse) when the Minor part of a SemVer is missing.
     /// I.e. when there is no Minor part like "1..3" or "1-pre+build".
     MissingMinor(msg: String)
-    /// Returned only by `parse()` when the Patch part of a SemVer is missing.
+    /// Returned only by [`parse`](#parse) when the Patch part of a SemVer is missing.
     /// I.e. when there is no Patch part like "1.2.+build" or "1.2-pre+build".
     MissingPatch(msg: String)
-    /// Returned only by `parse()` when the Pre-release part of a SemVer is
-    /// missing despite it having its leading hyphen present.
+    /// Returned only by [`parse`](#parse) when the Pre-release part of a SemVer
+    /// is missing despite it having its leading hyphen present.
     /// E.g: "1.2.3-" or "1.2.3-+build".
     MissingPreRelease(msg: String)
-    // Returned only by `parse()` when the Build part of a SemVer
+    // Returned only by [`parse`](#parse) when the Build part of a SemVer
     // is missing despite it having its leading plus present.
     // E.g: "1.2.3+" or "1.2.3-rc0+".
     MissingBuild(msg: String)
@@ -445,13 +534,13 @@ pub type SemVerParseError {
     /// This includes when it is empty ("1.2.3-pre+"), or has invalid chars.
     InvalidBuild(msg: String)
 
-    /// Internal UTF conversion error which you should NEVER get.
+    /// Internal UTF conversion error which you should **never** get.
     InternalCodePointError(msg: String)
-    /// Internal error variant only used for testing which you should NEVER get.
+    /// Internal error variant only used for testing which you should **never** get.
     InternalError(msg: String)
 }
 
-/// Returns the inner String from any `SemVerParseError` type variant.
+/// Returns the inner `String` from any [`SemVerParseError`](#SemVerParseError) type variant.
 ///
 /// This is equivalent to simply using `the_error.msg`.
 ///
@@ -584,5 +673,80 @@ fn process_split(
                     "Somehow mapping over 3 elements produced more/less elements."))
             }
         }
+    }
+}
+
+/// Compares two given pre-release Strings based on the set of
+/// rules described in [point 11 of semver.org](https://semver.org/#spec-item-11).
+///
+/// ## Examples.
+///
+/// ```gleam
+/// // NOTE: empty pre-release tags always count as larger:
+/// compare_pre_release_strings("", "any.thing")
+/// // -> Gt
+///
+/// compare_pre_release_strings("any.thing", "")
+/// // -> Lt
+///
+/// // Integer parts are compared as integers:
+/// compare_pre_release_strings("12.thing.A", "13.thing.B")
+/// // -> Lt
+///
+/// // Non-integer parts are compared lexicographically:
+/// compare_pre_release_strings("12.thing.A", "12.thing.B")
+/// // -> Lt
+///
+/// // NOTE: 'A' comes before 'b' in the ASCII table:
+/// compare_pre_release_strings("12.thing.A", "12.thing.b")
+/// // -> Lt
+///
+/// // NOTE: '0' comes before '6':
+/// compare_pre_release_strings("rc07", "rc6")
+/// // -> Lt
+/// ```
+///
+pub fn compare_pre_release_strings(pre1: String, with pre2: String) -> order.Order {
+    case #(pre1, pre2) {
+        #("", "") -> order.Eq
+        // No pre-release tags always count as higher precedence:
+        #("", _) -> order.Gt
+        #(_, "") -> order.Lt
+        // Split and compare each set of pre-release tags:
+        #(pre1, pre2) -> {
+            compare_pre_release_parts(
+                string.split(pre1, on: "."),
+                string.split(pre2, on: "."))
+        }
+    }
+}
+
+// Helper to compare two lists of pre-release tags.
+fn compare_pre_release_parts(parts1: List(String), parts2: List(String)) ->
+        order.Order {
+    case #(parts1, parts2) {
+        #([], []) -> order.Eq
+        #([], _) -> order.Lt
+        #(_, []) -> order.Gt
+        #([part1, ..rest1], [part2, ..rest2]) ->
+                case compare_pre_release_tag(part1, part2) {
+            order.Eq -> compare_pre_release_parts(rest1, rest2)
+            order -> order
+        }
+    }
+}
+
+// Helper to compare two single pre-release tags.
+// Pre-release tag comparisons follow a rather convoluted set of rules
+// as described in [point 11 of semver.org](https://semver.org/#spec-item-11).
+fn compare_pre_release_tag(tag1: String, tag2: String) -> order.Order {
+    case #(int.parse(tag1), int.parse(tag2)) {
+        // Non-integer tags are to be compared lexicographically:
+        #(Error(_), Error(_)) -> string.compare(tag1, tag2)
+        // Integer tags always have lower precedence to strings:
+        #(Ok(_), Error(_)) -> order.Lt
+        #(Error(_), Ok(_)) -> order.Gt
+        // Two int tags are to be compared as integers:
+        #(Ok(int1), Ok(int2)) -> int.compare(int1, int2)
     }
 }
