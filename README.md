@@ -35,7 +35,7 @@ pub fn main() {
     use <- gleamsver.guard_version_compatible(
       version: server_version_with_compression,
       compatible_with: current_server_version,
-      if_incompatible_return: uncompressed_message,
+      else_return: uncompressed_message,
     )
 
     // Compression will only occur if the above guard succeeds:

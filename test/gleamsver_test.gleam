@@ -1088,7 +1088,7 @@ pub fn guard_version_compatible_test() {
             use <- gleamsver.guard_version_compatible(
                 version: first,
                 compatible_with: second,
-                if_incompatible_return: failure_string)
+                else_return: failure_string)
             success_string
         }
 
@@ -1097,6 +1097,176 @@ pub fn guard_version_compatible_test() {
     }
 
     are_compatible_testcases
+    |> list.index_map(testfn)
+}
+
+pub fn guard_version_lt_test() {
+    let success_string = "when successful"
+    let failure_string = "when unsuccessful"
+
+    let testfn = fn(input: #(SemVer, SemVer, order.Order), idx: Int) {
+        let #(first, second, result) = input
+
+        io.println(
+            "Running guard_version_lt() test #"
+            <> int.to_string(idx) <> " between '"
+            <> gleamsver.to_string(first) <> "' and '"
+            <> gleamsver.to_string(second) <> "'")
+
+        let expected_result = case result {
+            order.Lt -> success_string
+            _ -> failure_string
+        }
+
+        let test_result = {
+            use <- gleamsver.guard_version_lt(
+                version: first,
+                less_than: second,
+                else_return: failure_string)
+            success_string
+        }
+
+        test_result
+        |> should.equal(expected_result)
+    }
+
+    compare_testcases
+    |> list.index_map(testfn)
+}
+
+pub fn guard_version_lte_test() {
+    let success_string = "when successful"
+    let failure_string = "when unsuccessful"
+
+    let testfn = fn(input: #(SemVer, SemVer, order.Order), idx: Int) {
+        let #(first, second, result) = input
+
+        io.println(
+            "Running guard_version_lte() test #"
+            <> int.to_string(idx) <> " between '"
+            <> gleamsver.to_string(first) <> "' and '"
+            <> gleamsver.to_string(second) <> "'")
+
+        let expected_result = case result {
+            order.Lt | order.Eq -> success_string
+            _ -> failure_string
+        }
+
+        let test_result = {
+            use <- gleamsver.guard_version_lte(
+                version: first,
+                less_than_or_equal: second,
+                else_return: failure_string)
+            success_string
+        }
+
+        test_result
+        |> should.equal(expected_result)
+    }
+
+    compare_testcases
+    |> list.index_map(testfn)
+}
+
+pub fn guard_version_eq_test() {
+    let success_string = "when successful"
+    let failure_string = "when unsuccessful"
+
+    let testfn = fn(input: #(SemVer, SemVer, order.Order), idx: Int) {
+        let #(first, second, result) = input
+
+        io.println(
+            "Running guard_version_eq() test #"
+            <> int.to_string(idx) <> " between '"
+            <> gleamsver.to_string(first) <> "' and '"
+            <> gleamsver.to_string(second) <> "'")
+
+        let expected_result = case result {
+            order.Eq -> success_string
+            _ -> failure_string
+        }
+
+        let test_result = {
+            use <- gleamsver.guard_version_eq(
+                version: first,
+                equal_to: second,
+                else_return: failure_string)
+            success_string
+        }
+
+        test_result
+        |> should.equal(expected_result)
+    }
+
+    compare_testcases
+    |> list.index_map(testfn)
+}
+
+pub fn guard_version_gt_test() {
+    let success_string = "when successful"
+    let failure_string = "when unsuccessful"
+
+    let testfn = fn(input: #(SemVer, SemVer, order.Order), idx: Int) {
+        let #(first, second, result) = input
+
+        io.println(
+            "Running guard_version_eq() test #"
+            <> int.to_string(idx) <> " between '"
+            <> gleamsver.to_string(first) <> "' and '"
+            <> gleamsver.to_string(second) <> "'")
+
+        let expected_result = case result {
+            order.Gt -> success_string
+            _ -> failure_string
+        }
+
+        let test_result = {
+            use <- gleamsver.guard_version_gt(
+                version: first,
+                greater_than: second,
+                else_return: failure_string)
+            success_string
+        }
+
+        test_result
+        |> should.equal(expected_result)
+    }
+
+    compare_testcases
+    |> list.index_map(testfn)
+}
+
+pub fn guard_version_gte_test() {
+    let success_string = "when successful"
+    let failure_string = "when unsuccessful"
+
+    let testfn = fn(input: #(SemVer, SemVer, order.Order), idx: Int) {
+        let #(first, second, result) = input
+
+        io.println(
+            "Running guard_version_eq() test #"
+            <> int.to_string(idx) <> " between '"
+            <> gleamsver.to_string(first) <> "' and '"
+            <> gleamsver.to_string(second) <> "'")
+
+        let expected_result = case result {
+            order.Gt | order.Eq -> success_string
+            _ -> failure_string
+        }
+
+        let test_result = {
+            use <- gleamsver.guard_version_gte(
+                version: first,
+                greater_than_or_equal: second,
+                else_return: failure_string)
+            success_string
+        }
+
+        test_result
+        |> should.equal(expected_result)
+    }
+
+    compare_testcases
     |> list.index_map(testfn)
 }
 

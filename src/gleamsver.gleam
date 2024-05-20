@@ -8,6 +8,43 @@
 ////
 //// This package aims to respect the specifications of the Semantic
 //// Versioning 2.0.0 standard as described at https://semver.org.
+////
+//// ```gleam
+//// import gleam/io
+//// import gleamsver
+////
+//// fn compress_message(message: String) -> String {
+////   message <> ", but compressed ;)"
+//// }
+////
+//// pub fn main() {
+////   // Parse correct SemVer 2.0.0 strings using `parse()`:
+////   let assert Ok(server_version_with_compression) = gleamsver.parse("1.3.7-rc0")
+////   io.debug(server_version_with_compression)  // SemVer(1, 3, 7, "rc0", "")
+////
+////   // Parse loose SemVer strings using `parse_loosely()`:
+////   let assert Ok(current_server_version) = gleamsver.parse_loosely("v1.4")
+////
+////   // Convert back to SemVer strings using `to_string()`:
+////   let uncompressed_message =
+////     "Hello, server version " <> gleamsver.to_string(current_server_version)
+////
+////   let message = {
+////     // Guard against version mismatches using `guard_version_*()` functions:
+////     use <- gleamsver.guard_version_compatible(
+////       version: server_version_with_compression,
+////       compatible_with: current_server_version,
+////       else_return: uncompressed_message,
+////     )
+////
+////     // Compression will only occur if the above guard succeeds:
+////     compress_message(uncompressed_message)
+////   }
+////
+////   // Prints "Hello, server version 1.4.0, but compressed ;)"
+////   io.println(message)
+//// }
+//// ```
 
 import gleam/int
 import gleam/list
@@ -751,9 +788,9 @@ fn compare_pre_release_tag(tag1: String, tag2: String) -> order.Order {
 }
 
 /// Guards that the given first [`SemVer`](#SemVer) is compatible with
-/// with the second [`SemVer`](#SemVer), running and returning the result
+/// the second [`SemVer`](#SemVer), running and returning the result
 /// of the `if_compatible` callback function if so,
-/// or returning the `if_incompatible_return` value if not.
+/// or returning the `else_return` value if not.
 ///
 /// The semantics of the compatibility check are as dictated by the
 /// [`are_compatible`](#are_compatible) function.
@@ -764,23 +801,199 @@ fn compare_pre_release_tag(tag1: String, tag2: String) -> order.Order {
 /// let uncompressed_message = "Hello!"
 /// let message = {
 ///   use <- gleamsver.guard_version_compatible(
-///       version: server_version_with_compression,
-///       compatible_with: current_server_version,
-///       if_incompatible_return: uncompressed_message,
+///     version: server_version_with_compression,
+///     compatible_with: current_server_version,
+///     else_return: uncompressed_message,
 ///   )
 ///
 ///   // Compression will only occur if the above guard succeeds:
 ///   uncompressed_message <> ", but compressed ;)"
 /// }
-/// io.println(message)  // depends on version compatibility
+/// io.println(message)  // compression depends on version compatibility
 /// ```
 pub fn guard_version_compatible(
         version v1: SemVer,
         compatible_with v2: SemVer,
-        if_incompatible_return default_value: t,
+        else_return default_value: t,
         if_compatible operation_if_compatible: fn() -> t) -> t {
     case are_compatible(v1, with: v2) {
         True -> operation_if_compatible()
         False -> default_value
+    }
+}
+
+/// Guards that the given first [`SemVer`](#SemVer) is less than
+/// the second [`SemVer`](#SemVer), running and returning the result
+/// of the `if_compatible` callback function if so, or
+/// returning the `else_return` default value if not.
+///
+/// The semantics of the comparison check are as dictated by the
+/// [`compare`](#compare) function.
+///
+/// ## Examples
+///
+/// ```gleam
+/// let uncompressed_message = "Hello!"
+/// let message = {
+///   use <- gleamsver.guard_version_lt(
+///     version: server_version_with_compression,
+///     less_that: current_server_version,
+///     else_return: uncompressed_message,
+///   )
+///
+///   // Compression will only occur if the above guard succeeds:
+///   uncompressed_message <> ", but compressed ;)"
+/// }
+/// io.println(message)  // compression depends on version ordering
+/// ```
+pub fn guard_version_lt(
+        version v1: SemVer,
+        less_than v2: SemVer,
+        else_return default_value: t,
+        if_compatible operation_if_lt: fn() -> t) -> t {
+    case compare(v1, v2) {
+        order.Lt -> operation_if_lt()
+        _ -> default_value
+    }
+}
+
+/// Guards that the given first [`SemVer`](#SemVer) is less than or equal
+/// to the second [`SemVer`](#SemVer), running and returning the result
+/// of the `if_compatible` callback function if so, or
+/// returning the `else_return` default value if not.
+///
+/// The semantics of the comparison check are as dictated by the
+/// [`compare`](#compare) function.
+///
+/// ## Examples
+///
+/// ```gleam
+/// let uncompressed_message = "Hello!"
+/// let message = {
+///   use <- gleamsver.guard_version_lte(
+///     version: server_version_with_compression,
+///     less_that_or_equal: current_server_version,
+///     else_return: uncompressed_message,
+///   )
+///
+///   // Compression will only occur if the above guard succeeds:
+///   uncompressed_message <> ", but compressed ;)"
+/// }
+/// io.println(message)  // compression depends on version ordering
+/// ```
+pub fn guard_version_lte(
+        version v1: SemVer,
+        less_than_or_equal v2: SemVer,
+        else_return default_value: t,
+        if_compatible operation_if_lte: fn() -> t) -> t {
+    case compare(v1, v2) {
+        order.Lt | order.Eq -> operation_if_lte()
+        _ -> default_value
+    }
+}
+
+
+/// Guards that the given first [`SemVer`](#SemVer) is equal to
+/// the second [`SemVer`](#SemVer), running and returning the
+/// result of the `if_compatible` callback function if so, or
+/// returning the `else_return` default value if not.
+///
+/// The semantics of the comparison check are as dictated by the
+/// [`compare`](#compare) function.
+///
+/// ## Examples
+///
+/// ```gleam
+/// let uncompressed_message = "Hello!"
+/// let message = {
+///   use <- gleamsver.guard_version_eq(
+///     version: server_version_with_compression,
+///     equal_to: current_server_version,
+///     else_return: uncompressed_message,
+///   )
+///
+///   // Compression will only occur if the above guard succeeds:
+///   uncompressed_message <> ", but compressed ;)"
+/// }
+/// io.println(message)  // compression depends on version equality
+/// ```
+pub fn guard_version_eq(
+        version v1: SemVer,
+        equal_to v2: SemVer,
+        else_return default_value: t,
+        if_compatible operation_if_eq: fn() -> t) -> t {
+    case compare(v1, v2) {
+        order.Eq -> operation_if_eq()
+        _ -> default_value
+    }
+}
+
+/// Guards that the given first [`SemVer`](#SemVer) is greater than
+/// the second [`SemVer`](#SemVer), running and returning the result
+/// of the `if_compatible` callback function if so, or
+/// returning the `else_return` default value if not.
+///
+/// The semantics of the comparison check are as dictated by the
+/// [`compare`](#compare) function.
+///
+/// ## Examples
+///
+/// ```gleam
+/// let uncompressed_message = "Hello!"
+/// let message = {
+///   use <- gleamsver.guard_version_gt(
+///     version: current_server_version,
+///     greater_than: server_version_with_compression,
+///     else_return: uncompressed_message,
+///   )
+///
+///   // Compression will only occur if the above guard succeeds:
+///   uncompressed_message <> ", but compressed ;)"
+/// }
+/// io.println(message)  // compression depends on version ordering
+/// ```
+pub fn guard_version_gt(
+        version v1: SemVer,
+        greater_than v2: SemVer,
+        else_return default_value: t,
+        if_compatible operation_if_gt: fn() -> t) -> t {
+    case compare(v1, v2) {
+        order.Gt -> operation_if_gt()
+        _ -> default_value
+    }
+}
+
+/// Guards that the given first [`SemVer`](#SemVer) is greater than
+/// or equal to the second [`SemVer`](#SemVer), running and returning
+/// the result of the `if_compatible` callback function if so, or
+/// returning the `else_return` default value if not.
+///
+/// The semantics of the comparison check are as dictated by the
+/// [`compare`](#compare) function.
+///
+/// ## Examples
+///
+/// ```gleam
+/// let uncompressed_message = "Hello!"
+/// let message = {
+///   use <- gleamsver.guard_version_gte(
+///     version: current_server_version,
+///     greater_than_or_equal: server_version_with_compression,
+///     else_return: uncompressed_message,
+///   )
+///
+///   // Compression will only occur if the above guard succeeds:
+///   uncompressed_message <> ", but compressed ;)"
+/// }
+/// io.println(message)  // compression depends on version ordering
+/// ```
+pub fn guard_version_gte(
+        version v1: SemVer,
+        greater_than_or_equal v2: SemVer,
+        else_return default_value: t,
+        if_compatible operation_if_gte: fn() -> t) -> t {
+    case compare(v1, v2) {
+        order.Gt | order.Eq -> operation_if_gte()
+        _ -> default_value
     }
 }
