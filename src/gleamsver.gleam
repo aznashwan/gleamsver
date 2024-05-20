@@ -380,9 +380,9 @@ pub fn are_equal_core(v1: SemVer, with v2: SemVer) -> Bool {
 ///
 pub fn are_equal(v1: SemVer, with v2: SemVer) -> Bool {
     case compare_core(v1, with: v2) {
-        order.Eq -> case #(v1.pre == v2.pre, v1.build == v2.build) {
-            #(True, True) -> True
-            _ -> False
+        order.Eq -> case v1.pre == v2.pre, v1.build == v2.build {
+            True, True -> True
+            _, _ -> False
         }
         _ -> False
     }
@@ -604,18 +604,17 @@ fn process_pre_release_and_build(
                 MissingBuild(
                     "Build part missing after trailing '+' from: "
                     <> quote(pre_and_build)))
-            Ok(#(pre, build)) -> case #(pre, build) {
-                #(pre, post) -> case strict {
+            Ok(#(pre, build)) -> case pre, build {
+                pre, post -> case strict {
                     False -> Ok(#(pre, post))
-                    True -> case #(
-                            validate_pre_and_build_chars(pre),
-                            validate_pre_and_build_chars(build)) {
-                        #(Ok(pre), Ok(build)) -> Ok(#(pre, build))
-                        #(Error(e), _) -> Error(
+                    True -> case validate_pre_and_build_chars(pre),
+                            validate_pre_and_build_chars(build) {
+                        Ok(pre), Ok(build) -> Ok(#(pre, build))
+                        Error(e), _ -> Error(
                             InvalidPreRelease(
                                 "Pre-release part " <> quote(pre)
                                 <> " is invalid: " <> e))
-                        #(_, Error(e)) -> Error(
+                        _, Error(e) -> Error(
                             InvalidBuild(
                                 "Build part " <> quote(build)
                                 <> " is invalid: " <> e))
@@ -707,13 +706,13 @@ fn process_split(
 /// ```
 ///
 pub fn compare_pre_release_strings(pre1: String, with pre2: String) -> order.Order {
-    case #(pre1, pre2) {
-        #("", "") -> order.Eq
+    case pre1, pre2 {
+        "", "" -> order.Eq
         // No pre-release tags always count as higher precedence:
-        #("", _) -> order.Gt
-        #(_, "") -> order.Lt
+        "", _ -> order.Gt
+        _, "" -> order.Lt
         // Split and compare each set of pre-release tags:
-        #(pre1, pre2) -> {
+        pre1, pre2 -> {
             compare_pre_release_parts(
                 string.split(pre1, on: "."),
                 string.split(pre2, on: "."))
@@ -724,11 +723,11 @@ pub fn compare_pre_release_strings(pre1: String, with pre2: String) -> order.Ord
 // Helper to compare two lists of pre-release tags.
 fn compare_pre_release_parts(parts1: List(String), parts2: List(String)) ->
         order.Order {
-    case #(parts1, parts2) {
-        #([], []) -> order.Eq
-        #([], _) -> order.Lt
-        #(_, []) -> order.Gt
-        #([part1, ..rest1], [part2, ..rest2]) ->
+    case parts1, parts2 {
+        [], [] -> order.Eq
+        [], _ -> order.Lt
+        _, [] -> order.Gt
+        [part1, ..rest1], [part2, ..rest2] ->
                 case compare_pre_release_tag(part1, part2) {
             order.Eq -> compare_pre_release_parts(rest1, rest2)
             order -> order
@@ -740,14 +739,14 @@ fn compare_pre_release_parts(parts1: List(String), parts2: List(String)) ->
 // Pre-release tag comparisons follow a rather convoluted set of rules
 // as described in [point 11 of semver.org](https://semver.org/#spec-item-11).
 fn compare_pre_release_tag(tag1: String, tag2: String) -> order.Order {
-    case #(int.parse(tag1), int.parse(tag2)) {
+    case int.parse(tag1), int.parse(tag2) {
         // Non-integer tags are to be compared lexicographically:
-        #(Error(_), Error(_)) -> string.compare(tag1, tag2)
+        Error(_), Error(_) -> string.compare(tag1, tag2)
         // Integer tags always have lower precedence to strings:
-        #(Ok(_), Error(_)) -> order.Lt
-        #(Error(_), Ok(_)) -> order.Gt
+        Ok(_), Error(_) -> order.Lt
+        Error(_), Ok(_) -> order.Gt
         // Two int tags are to be compared as integers:
-        #(Ok(int1), Ok(int2)) -> int.compare(int1, int2)
+        Ok(int1), Ok(int2) -> int.compare(int1, int2)
     }
 }
 
