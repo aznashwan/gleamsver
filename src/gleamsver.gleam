@@ -7,7 +7,7 @@
 //// Gleam utilities for parsing, comparing, and encoding SemVer versions.
 ////
 //// This package aims to respect the specifications of the Semantic
-//// Versioning 2.0.0 standard as described at https://semver.org.
+//// Versioning 2.0.0 standard as described on [semver.org](https://semver.org).
 ////
 //// ```gleam
 //// import gleam/io
@@ -69,12 +69,13 @@ pub type SemVer {
         build: String)
 }
 
-/// Constant representing an empty SemVer (`0.0.0` with no pre/build tags).
+/// Constant representing an empty SemVer
+/// (`0.0.0` with no pre-release or build tags).
 pub const empty_semver = SemVer(0, 0, 0, "", "")
 
-/// Parses the given string into a `SemVer`.
+/// Parses the given string into a [`SemVer`](#SemVer).
 ///
-/// Parsing rules are EXACTLY based on the rules defined on [semver.org](https://semver.org).
+/// Parsing rules are **exactly** based on the rules defined on [semver.org](https://semver.org).
 ///
 /// If you would prefer some leniency when parsing, see [`parse_loosely`](#parse_loosely).
 ///
@@ -129,16 +130,21 @@ pub fn parse(version: String) -> Result(SemVer, SemVerParseError) {
     }
 }
 
-/// Parse the given string into a `SemVer` more loosely than `parse()`.
+/// Parse the given string into a [`SemVer`](#SemVer) more loosely than
+/// [`parse`](#parse).
 ///
 /// Please see [`parse`](#parse) for a baseline on how this function works, as
-/// all inputs accepted by [`parse`](#parse) are also accepted by `parse_loosely`.
+/// all inputs accepted by [`parse`](#parse) are also accepted by
+/// [`parse_loosely`](#parse_loosely).
 ///
 /// The main additions over the behavior of [`parse`](#parse) are as follows:
-/// * will also accept a single leading 'v' in the input (e.g. "v1.2.3-pre+build")
-/// * will accept missing Minor and/or Patch versions (e.g. "1-pre+build")
+/// * will also accept a single leading `v` in the input (e.g. `v1.2.3-pre+build`)
+/// * will accept missing Minor and/or Patch versions (e.g. `1-pre+build`)
 /// * will accept *any* non-alphanumeric character in the Pre-release and Build
-///   parts as long as they are still prefixed by the usual '-' or '+'.
+///   parts as long as they are still prefixed by the usual `-` or `+`.
+///
+/// See [`SemVerParseError`](#SemVerParseError) for possible error variants
+/// returned by [`parse_loosely`](#parse_loosely).
 ///
 /// ## Examples
 ///
@@ -170,7 +176,8 @@ pub fn parse_loosely(version: String) -> Result(SemVer, SemVerParseError) {
     }
 }
 
-/// Converts a `SemVer` into a `String` as defined on [semver.org](https://semver.org).
+/// Converts a [`SemVer`](#SemVer) into a `String` as defined on
+/// [semver.org](https://semver.org).
 ///
 /// ## Examples
 ///
@@ -208,7 +215,8 @@ pub fn to_string(ver: SemVer) -> String {
     }
 }
 
-/// Converts a `SemVer` into a `String` as defined on: [semver.org](https://semver.org).
+/// Converts a [`SemVer`](#SemVer) into a `String`
+/// as defined on [semver.org](https://semver.org).
 /// Will omit the `Minor.Patch` (second and third parts) if they are `0`.
 ///
 /// Although its output will **not** be re-parseable using [`parse`](#parse),
@@ -258,7 +266,7 @@ pub fn to_string_concise(ver: SemVer) -> String {
 /// two given [`SemVer`](#SemVer)s, returning the `gleam/order.Order` of the resulting
 /// comparisons as described on [semver.org](https://semver.org/#spec-item-11).
 ///
-/// If you would like to only compare core versions too, use
+/// If you would like to only compare core versions, use
 /// [`compare_core`](#compare_core).
 ///
 /// If you want to check for exact equality, use [`are_equal`](#are_equal).
@@ -335,8 +343,9 @@ pub fn compare_core(v1: SemVer, with v2: SemVer) -> order.Order {
     }
 }
 
-/// Checks whether the first given `SemVer` is compatible with the second
-/// based on the [compatibility rules described on semver.org](https://semver.org/#semantic-versioning-specification-semver).
+/// Checks whether the first given [`SemVer`](#SemVer) is compatible with
+/// the second based on the
+/// [compatibility rules described on semver.org](https://semver.org/#semantic-versioning-specification-semver).
 ///
 /// In order for a version to count as compatible with another, the Major part
 /// of the versions must be **exactly equal**, and the Minor, Patch and
@@ -535,40 +544,40 @@ pub type SemVerParseError {
     /// Returned only by [`parse`](#parse) when its input is empty.
     EmptyInput(msg: String)
 
-    /// Returned when the Major part of a SemVer is missing.
+    /// Returned when the Major part of a [`SemVer`](#SemVer) is missing.
     /// I.e. there are no leading numeric digits to the input String.
     MissingMajor(msg: String)
-    /// Returned only by [`parse`](#parse) when the Minor part of a SemVer is missing.
-    /// I.e. when there is no Minor part like "1..3" or "1-pre+build".
+    /// Returned only by [`parse`](#parse) when the Minor part of a [`SemVer`](#SemVer) is missing.
+    /// I.e. when there is no Minor part like `1..3` or `1-pre+build`.
     MissingMinor(msg: String)
-    /// Returned only by [`parse`](#parse) when the Patch part of a SemVer is missing.
-    /// I.e. when there is no Patch part like "1.2.+build" or "1.2-pre+build".
+    /// Returned only by [`parse`](#parse) when the Patch part of a [`SemVer`](#SemVer) is missing.
+    /// I.e. when there is no Patch part like `1.2.+build` or `1.2-pre+build`.
     MissingPatch(msg: String)
-    /// Returned only by [`parse`](#parse) when the Pre-release part of a SemVer
+    /// Returned only by [`parse`](#parse) when the Pre-release part of a [`SemVer`](#SemVer)
     /// is missing despite it having its leading hyphen present.
-    /// E.g: "1.2.3-" or "1.2.3-+build".
+    /// E.g: `1.2.3-` or `1.2.3-+build`.
     MissingPreRelease(msg: String)
-    // Returned only by [`parse`](#parse) when the Build part of a SemVer
-    // is missing despite it having its leading plus present.
-    // E.g: "1.2.3+" or "1.2.3-rc0+".
+    /// Returned only by [`parse`](#parse) when the Build part of a [`SemVer`](#SemVer)
+    /// is missing despite it having its leading plus present.
+    /// E.g: `1.2.3+` or `1.2.3-rc0+`.
     MissingBuild(msg: String)
 
-    /// Returned when there is no Pre-release or Build separators ('-' and '+')
-    /// between the Major.Minor.Patch core part of the SemVer and the rest.
-    /// E.g: "1.2.3rc0" or "1.2.3build5".
+    /// Returned when there is no Pre-release or Build separators (`-` and `+`)
+    /// between the Major.Minor.Patch core part of the [`SemVer`](#SemVer) and the rest.
+    /// E.g: `1.2.3rc0` or `1.2.3build5`.
     MissingPreOrBuildSeparator(msg: String)
 
-    /// Returned when the Major part of a SemVer is malformed.
+    /// Returned when the Integer Major part of a [`SemVer`](#SemVer) cannot be parsed.
     InvalidMajor(msg: String)
-    /// Returned when the Minor part of a SemVer is malformed.
+    /// Returned when the Integer Minor part of a [`SemVer`](#SemVer) cannot be parsed.
     InvalidMinor(msg: String)
-    /// Returned when the Patch part of a SemVer is malformed.
+    /// Returned when the Integer Patch part of a [`SemVer`](#SemVer) cannot be parsed.
     InvalidPatch(msg: String)
-    /// Returned when the Pre-release tags part of a SemVer is malformed.
-    /// This includes when it is empty ("1.2.3-+build"), or has invalid chars.
+    /// Returned only by [`parse`](#parse) when the Pre-release tag part
+    /// of a [`SemVer`](#SemVer) contains unacceptable characters.
     InvalidPreRelease(msg: String)
-    /// Returned when the Build tags part of a SemVer is malformed.
-    /// This includes when it is empty ("1.2.3-pre+"), or has invalid chars.
+    /// Returned only by [`parse`](#parse) when the Build tag part
+    /// of a [`SemVer`](#SemVer) contains unacceptable characters.
     InvalidBuild(msg: String)
 
     /// Internal UTF conversion error which you should **never** get.

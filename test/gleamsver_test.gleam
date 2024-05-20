@@ -259,6 +259,10 @@ const loose_semver_testcases = [
         "1.2",
         SemVer(1, 2, 0, "", ""),
     ),
+    #(
+        "1..3",
+        SemVer(1, 0, 3, "", ""),
+    ),
 
     // Major and pre/build:
     #(
