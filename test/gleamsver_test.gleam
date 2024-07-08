@@ -653,6 +653,13 @@ const compare_pre_release_strings_testcases = [
         order.Eq,
     ),
     #(
+        "rc0.123.7",
+        "rc0.123.7",
+        order.Eq,
+    ),
+
+    // Empty tags should have higher precendence:
+    #(
         "",
         "anything",
         order.Gt,
@@ -663,10 +670,38 @@ const compare_pre_release_strings_testcases = [
         order.Lt,
     ),
     #(
-        "rc0.123.7",
-        "rc0.123.7",
-        order.Eq,
+        "",
+        "7",
+        order.Gt,
     ),
+    #(
+        "7",
+        "",
+        order.Lt,
+    ),
+
+    // Integer tags should have lower precedence to non-Int ones:
+    #(
+        "123",
+        "rc0",
+        order.Lt,
+    ),
+    #(
+        "rc0",
+        "123",
+        order.Gt,
+    ),
+    #(
+        "abc.123",
+        "abc.rc0",
+        order.Lt,
+    ),
+    #(
+        "abc.rc0",
+        "abc.123",
+        order.Gt,
+    ),
+
     // Pre-release strings with more parts => higher.
     #(
         "alpha",
@@ -678,6 +713,12 @@ const compare_pre_release_strings_testcases = [
         "alpha.1",
         order.Gt,
     ),
+    #(
+        "alpha.1.1",
+        "alpha.2",
+        order.Lt,
+    ),
+
     // Integer parts should be compared as Integers:
     #(
         "alpha.7",
@@ -694,6 +735,7 @@ const compare_pre_release_strings_testcases = [
         "alpha.8.123",
         order.Gt,
     ),
+
     // String parts should be compared lexicographically:
     #(
         "alpha.abc",
@@ -892,15 +934,32 @@ const compare_testcases = [
         SemVer(1, 2, 3, "rc0.123", ""),
         order.Gt,
     ),
-
     #(
         SemVer(1, 2, 3, "rc0.124", ""),
         SemVer(1, 2, 3, "rc1.123", ""),
         order.Lt,
     ),
+
     #(
         SemVer(1, 2, 3, "rc07", ""),
         SemVer(1, 2, 3, "rc6", ""),
+        order.Lt,
+    ),
+
+    #(
+        SemVer(1, 2, 3, "12.thing.1", ""),
+        SemVer(1, 2, 3, "12.thing.rc0", ""),
+        order.Lt,
+    ),
+    #(
+        SemVer(1, 2, 3, "12.thing.rc0", ""),
+        SemVer(1, 2, 3, "12.thing.1", ""),
+        order.Gt,
+    ),
+
+    #(
+        SemVer(1, 2, 3, "12.thing.B", ""),
+        SemVer(1, 2, 3, "12.thing.a", ""),
         order.Lt,
     ),
     #(

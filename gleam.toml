@@ -1,5 +1,5 @@
 name = "gleamsver"
-version = "1.0.0"
+version = "1.0.1"
 
 description = "Comprehensive set of native Gleam utilities for handling SemVer 2.0.0 version strings."
 licences = ["MIT"]

@@ -89,7 +89,7 @@ pub const empty_semver = SemVer(0, 0, 0, "", "")
 /// // -> Ok(SemVer(major: 1, minor; 2, patch: 3, pre: "rc0", build: "20240505"))
 /// ```
 ///
-/// Both the Pre-release ("-rc0") and Build ("+20240505") parts are optional:
+/// Both the Pre-release (`-rc0`) and Build (`+20240505`) parts are optional:
 ///
 /// ```gleam
 /// parse("4.5.6-rc0")
@@ -117,7 +117,7 @@ pub const empty_semver = SemVer(0, 0, 0, "", "")
 ///
 /// ```gleam
 /// parse("abc")
-/// -> MissingMajor("Leading Major SemVer Integer part is missing.")
+/// // -> MissingMajor("Leading Major SemVer Integer part is missing.")
 /// // To get the error String directly, simply:
 /// parse("abc") |> result.map_error(string_from_parsing_error)
 /// // -> Error("Leading Major SemVer Integer part is missing.")
@@ -390,7 +390,7 @@ pub fn are_compatible(v1: SemVer, with v2: SemVer) -> Bool {
 ///
 /// ## Examples
 ///
-/// ```gleams
+/// ```gleam
 /// are_equal_core(SemVer(1, 2, 3, "", ""), with: SemVer(1, 2, 3, "", ""))
 /// // -> True
 ///
@@ -742,11 +742,15 @@ fn process_split(
 /// compare_pre_release_strings("12.thing.A", "12.thing.B")
 /// // -> Lt
 ///
-/// // NOTE: 'A' comes before 'b' in the ASCII table:
-/// compare_pre_release_strings("12.thing.A", "12.thing.b")
+/// // NOTE: integer parts always have lower precedence over non-integer ones:
+/// compare_pre_release_strings("12.thing.1", "12.thing.rc0")
 /// // -> Lt
 ///
-/// // NOTE: '0' comes before '6':
+/// // NOTE: 'B' comes before 'a' in the ASCII table:
+/// compare_pre_release_strings("12.thing.B", "12.thing.a")
+/// // -> Lt
+///
+/// // NOTE: '0' comes before '6' in the ASCII table:
 /// compare_pre_release_strings("rc07", "rc6")
 /// // -> Lt
 /// ```
